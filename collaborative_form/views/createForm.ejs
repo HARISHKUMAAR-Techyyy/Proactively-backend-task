@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Form</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <div class="container">
+    <h2>Create a Form</h2>
+    <form id="formCreate">
+      <input name="formName" placeholder="Form Name" required class="form-control" />
+      <div id="fields"></div>
+      <button type="button" onclick="addField()">➕ Add Field</button>
+      <button type="submit">✅ Create Form</button>
+    </form>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    let fieldCount = 0;
+
+    function addField() {
+      const container = document.getElementById('fields');
+      const fieldHTML = `
+        <div class="form-group" style="margin-top: 10px;">
+          <input name="fields[${fieldCount}][name]" placeholder="Field Name" required class="form-control" />
+          <select name="fields[${fieldCount}][type]" onchange="toggleOptions(this, ${fieldCount})" class="form-control">
+            <option value="text">Text</option>
+            <option value="number">Number</option>
+            <option value="dropdown">Dropdown</option>
+          </select>
+          <input name="fields[${fieldCount}][options]" placeholder="Options (comma separated)" class="form-control" style="display:none" />
+        </div>`;
+      container.insertAdjacentHTML('beforeend', fieldHTML);
+      fieldCount++;
+    }
+
+    function toggleOptions(select, index) {
+      const input = select.parentElement.querySelector(`input[name="fields[${index}][options]"]`);
+      if (select.value === "dropdown") {
+        input.style.display = "block";
+        input.required = true;
+      } else {
+        input.style.display = "none";
+        input.required = false;
+      }
+    }
+
+    document.getElementById("formCreate").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const fields = [];
+
+      for (let [key, value] of form.entries()) {
+        if (key.startsWith("fields[")) {
+          const [, index, prop] = key.match(/fields\[(\d+)\]\[(\w+)\]/);
+          fields[index] = fields[index] || {};
+          fields[index][prop] = value;
+        }
+      }
+
+      const response = await fetch("/admin/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          formName: form.get("formName"),
+          fields
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        document.getElementById("result").innerHTML =
+          `<a href="${data.link}" target="_blank">🔗 Open Form</a>`;
+      } else {
+        document.getElementById("result").innerHTML =
+          `<span style="color:red;">❌ ${data.message}</span>`;
+      }
+    });
+  </script>
+</body>
+</html>
